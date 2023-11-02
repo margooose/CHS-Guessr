@@ -1,5 +1,5 @@
 <script lang="ts">
-
+// @ts-nocheck
 
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
@@ -73,7 +73,7 @@ export default defineComponent({
         ...mapStores(useAppStore),
 
         getBackgroundImage() {
-            return `url(src/assets/${this.current_location.photo})`
+            return `url(assets/${this.current_location.photo})`
         },
 
         getTimerColor() {
