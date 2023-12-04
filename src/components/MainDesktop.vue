@@ -1,6 +1,5 @@
 <script lang="ts">
 // @ts-nocheck
-
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import { mapState, mapStores } from 'pinia';
@@ -17,6 +16,9 @@ interface Location {
     latitude: number
     longitude: number
     difficulty_multiplier: number
+    attempt_distance: number
+    attempt_number: number
+    attempt_time: number
 }
 interface State {
     current_location: Location
@@ -26,6 +28,7 @@ interface State {
     photoIsEnlarged: boolean
     hasMadeAttempt: boolean
     current_attempt_distance: number
+    reloadMap: boolean
 }
 
 declare module '@vue/runtime-core' {
@@ -52,6 +55,10 @@ export default defineComponent({
                 latitude: 0,
                 longitude: 0,
                 difficulty_multiplier: 0,
+
+                attempt_distance: NaN, //placeholder values
+                attempt_number: NaN,
+                attempt_time: NaN,
             },
 
             timer_time: 60,
@@ -65,6 +72,8 @@ export default defineComponent({
             attempt_number: 0,
 
             current_attempt_distance: 0,
+
+            reloadMap: false,
         }
     },
 
@@ -73,7 +82,8 @@ export default defineComponent({
         ...mapStores(useAppStore),
 
         getBackgroundImage() {
-            return `url(assets/${this.current_location.photo})`
+            return `url(src/assets/${this.current_location.photo})`
+            return `url(assets/${this.current_location.photo})` //for production file management
         },
 
         getTimerColor() {
@@ -90,13 +100,11 @@ export default defineComponent({
     watch: {
         timer_time: {
             handler() {
-                if (this.timer_time >= 0 && this.timeIsEnabled) {
+                if (this.timer_time > 0 && this.timeIsEnabled) {
                     setTimeout(() => {
                         this.timer_time--
                     }, 1000)
                     
-                } else if(this.timer_time < 0) {
-                    alert("Time's up! You can do better next time!")
                 }
             },
             immediate: true
@@ -128,8 +136,7 @@ export default defineComponent({
 
     methods: {
         nextPicture() {
-            console.log('next')
-            this.renderMap()
+            this.reloadMap = true //sorta hacky way of making the map reload when method is called
         },
 
         renderMap() {
@@ -144,19 +151,31 @@ export default defineComponent({
             this.hasMadeAttempt = false
 
             console.log(random_index, this.current_location, this.appStore)
-            
 
+            
 
             let map = L.map('map').setView([35.699081, -81.288178], 18);
 
-            map.on('keydown', (e) => { //starts new attempt
-                if (e.originalEvent.key === 'Enter') {
+            window.addEventListener('keydown', (e) => { //starts new attempt
+                if (e.code === 'Enter' && this.hasMadeAttempt === true) {
+                    
                     map.remove()
                     this.renderMap()
                     this.timer_time = 60
                     this.timeIsEnabled = true
                 }
             })
+            window.addEventListener('click', (e) => {
+                if ( this.timer_time <= 1 || this.hasMadeAttempt && this.reloadMap) {
+                    map.remove()
+                    this.renderMap()
+                    this.timer_time = 60
+                    this.timeIsEnabled = true
+                    
+                    this.reloadMap = false
+                }
+            })
+            
             
             map.on('click', (e) => {
                 if (this.hasMadeAttempt === false) {
@@ -254,7 +273,6 @@ export default defineComponent({
 
                     L.geoJSON(lines, {style: lineStyle}
                     ).addTo(map);
-
                 }
             })
 
@@ -264,16 +282,8 @@ export default defineComponent({
                 maxZoom: 20
             }).addTo(map);
 
-
-            
-
-
-            
-            
         },
-
     }
-
 
 })
 
@@ -298,18 +308,17 @@ export default defineComponent({
 
             <div id="past-attempts">
                 <PastAttempt v-for="attempt in appStore.used_locations" :attempt="attempt" :key="attempt.attempt_number" />
-                
             </div>
         </div>
 
         <div id="timer" :style="{color: getTimerColor}">{{ timer_time }}</div>
-            
         
-
         <div id="picture" :ref="'picture'" @click="photoIsEnlarged = !photoIsEnlarged" :style="{backgroundImage: getBackgroundImage}"></div>
-    
 
-    
+        <div v-show="timer_time <= 0" id="fail-screen">
+            <div id="fail-screen-text">Time's Up!</div>
+            <div id="retry-button" @click="nextPicture()">Retry ↺</div>
+        </div>
     
 </div>
 </template>
@@ -385,9 +394,39 @@ export default defineComponent({
     align-items: center;
     font-weight: bolder;
     font-size: large;
-    
 }
 
+#fail-screen{
+    position: absolute;
+    z-index: 701;
+    height: 20vh;
+    width: 20vw;
+    left: 40vw;
+    top: 40vh;
+
+    background-color: #902bf5;
+    border: .5em solid #1a1463;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#fail-screen-text{
+    text-align: center;
+    color: darkorange;
+    font-weight: bold;
+    margin-top: .5rem;
+}
+#retry-button{
+    align-items: center;
+    color: #0006ff;
+    background-color: #00a0ff;
+    border: .25rem solid #0006ff;
+    padding: 1rem;
+    margin-top: 2rem;
+    max-width: fit-content;
+    cursor: pointer;
+}
 
 
 #map{

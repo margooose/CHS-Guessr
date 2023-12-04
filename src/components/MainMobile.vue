@@ -5,5 +5,5 @@ export default {
 </script>
 <template>
 
-    mobile view - turn the screen to activate desktop view
+    mobile view is not done yet - turn the screen to activate desktop view
 </template>
