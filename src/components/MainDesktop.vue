@@ -82,8 +82,10 @@ export default defineComponent({
         ...mapStores(useAppStore),
 
         getBackgroundImage() {
-            return `url(src/assets/${this.current_location.photo})`
+            
             return `url(assets/${this.current_location.photo})` //for production file management
+            return `url(src/assets/${this.current_location.photo})`
+            
         },
 
         getTimerColor() {
